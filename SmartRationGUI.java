@@ -1,5 +1,3 @@
-import javax.swing.*;
-import javax.swing.table.DefaultTableModel;
 import java.awt.*;
 import java.awt.geom.RoundRectangle2D;
 import java.io.*;
@@ -7,6 +5,8 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.List;
+import javax.swing.*;
+import javax.swing.table.DefaultTableModel;
 
 /**
  * EquiEat - SMART RATIONING SYSTEM 
@@ -65,7 +65,7 @@ static class bootStrapper extends JFrame {
         
 
         // Inputs background image and sets it as the content pane, allowing us to add components on top of it
-        JLabel background = new JLabel(new ImageIcon("src\\bootStrapBG.png"));
+        JLabel background = new JLabel(new ImageIcon("resources\\bootStrapBG.png"));
         background.setLayout(new BorderLayout());
         setContentPane(background);
 
@@ -148,9 +148,9 @@ static class bootStrapper extends JFrame {
         operationsPanel.add(splitPane, BorderLayout.CENTER);
 
         JButton runBtn = new JButton("3. RUN DISTRIBUTION & ANALYZE POPULATION");
-        runBtn.setFont(new Font("Arial", Font.BOLD, 14));
+        runBtn.setFont(new Font("Arial",Font.BOLD, 14));
+        runBtn.setForeground(Color.BLACK);
         runBtn.setBackground(new Color(0, 120, 215));
-        runBtn.setForeground(Color.WHITE);
         runBtn.addActionListener(e -> runDistribution(tabbedPane));
         operationsPanel.add(runBtn, BorderLayout.SOUTH);
 
