@@ -1,6 +1,7 @@
 import javax.swing.*;
 import javax.swing.table.DefaultTableModel;
 import java.awt.*;
+import java.awt.geom.RoundRectangle2D;
 import java.io.*;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
@@ -59,11 +60,15 @@ static class bootStrapper extends JFrame {
         setSize(400, 200);
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setLocationRelativeTo(null);
+        setUndecorated(true); // Makes no border or titlebar
+        setShape(new RoundRectangle2D.Double(0, 0, getWidth(), getHeight(), 20, 20)); // Roundds the corners of the window
+        
 
         // Inputs background image and sets it as the content pane, allowing us to add components on top of it
-        JLabel background = new JLabel(new ImageIcon("bootStrapBG.png"));
+        JLabel background = new JLabel(new ImageIcon("src\\bootStrapBG.png"));
         background.setLayout(new BorderLayout());
         setContentPane(background);
+
         
         //initializes the labels of this loading screen
         JLabel label = new JLabel("Loading EquiEat Smart Rationing System...", SwingConstants.CENTER);
@@ -72,13 +77,14 @@ static class bootStrapper extends JFrame {
         
         JPanel bottomPanel = new JPanel(new BorderLayout());
         JLabel loadingStatus = new JLabel("Loading... ", SwingConstants.LEFT);
-        JLabel percentage = new JLabel("0%", SwingConstants.RIGHT);
+        JProgressBar progressBar = new JProgressBar(0, 100); // Uses the progress bar to visually show the loading progress
+        
+        progressBar.setStringPainted(true);
         loadingStatus.setFont(new Font("Arial", Font.PLAIN, 15));
-        percentage.setFont(new Font("Arial", Font.PLAIN, 15));
+        progressBar.setFont(new Font("Arial", Font.PLAIN, 15));
         
         bottomPanel.add(loadingStatus, BorderLayout.WEST);
-        bottomPanel.add(percentage, BorderLayout.EAST);
-        
+        bottomPanel.add(progressBar, BorderLayout.CENTER);
         background.add(label, BorderLayout.CENTER);
         background.add(bottomPanel, BorderLayout.SOUTH);
 
@@ -86,7 +92,7 @@ static class bootStrapper extends JFrame {
         int[] progress = {0};
         javax.swing.Timer progressTimer = new javax.swing.Timer(50, e -> {
             progress[0]++;
-            percentage.setText(progress[0] + "%");
+            progressBar.setValue(progress[0]);
             
             // Updates teh status when percentage reaches certain percentage
             if (progress[0] == 10) loadingStatus.setText("Loading Methods...");
@@ -97,10 +103,10 @@ static class bootStrapper extends JFrame {
             if (progress[0] >= 100) {
                 ((javax.swing.Timer)e.getSource()).stop();
                 dispose();
-                new SmartRationGUI().setVisible(true);
+                new SmartRationGUI().setVisible(true); // now calls the GUI 
             }
         });
-        
+
         progressTimer.start();
     }
 }
