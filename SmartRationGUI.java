@@ -55,6 +55,7 @@ static class bootStrapper extends JFrame {
     public bootStrapper() {
         AuditLogger tempLogger = new AuditLogger();
         tempLogger.log("SYSTEM_STARTUP", "Application launched.");
+
         
         setTitle("BootStrapper - Smart Rationing System");
         setSize(400, 200);
@@ -95,8 +96,24 @@ static class bootStrapper extends JFrame {
             progressBar.setValue(progress[0]);
             
             // Updates teh status when percentage reaches certain percentage
-            if (progress[0] == 10) loadingStatus.setText("Loading Methods...");
-            else if (progress[0] == 50) loadingStatus.setText("Initializing Systems...");
+            if (progress[0] == 10) {
+                loadingStatus.setText("Checking directories...");
+                File resourcesDir = new File("resources");
+                if (!resourcesDir.exists()){
+                    JOptionPane.showMessageDialog(this, "Error 1: Missing 'resources' folder. Please reinstall!");
+                    System.exit(1);
+                }  
+            }
+
+            else if (progress[0] == 20) {
+                loadingStatus.setText("Loading assets...");
+                ImageIcon bg = new ImageIcon("resources\\bootStrapBG.png"); // Preloads the image to ensure it's cached
+
+                if (bg.getIconWidth() == -1){
+                    JOptionPane.showMessageDialog(this, "Error 2: Missing file in resources. Please reinstall!");
+                    System.exit(1);
+                }
+            }
             else if (progress[0] == 90) loadingStatus.setText("Almost Ready...");
             
             // Checks when the progress has reached 100%, disposes the loading screen, and opens the main GUI -v-
