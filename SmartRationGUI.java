@@ -6,7 +6,9 @@ import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.List;
 import javax.swing.*;
+import javax.swing.plaf.basic.BasicTabbedPaneUI;
 import javax.swing.table.DefaultTableModel;
+
 
 /**
  * EquiEat - SMART RATIONING SYSTEM 
@@ -39,7 +41,6 @@ public class SmartRationGUI extends JFrame { // Creates our GUI/Window
     // And we only need one brain or engine within our program
     private final RationEngine engine = new RationEngine();
     private final AuditLogger logger = new AuditLogger();
-
     
     // try-catch method
     // try { unsure input / risky input } catch {what you do after an error occurs}
@@ -90,13 +91,16 @@ static class bootStrapper extends JFrame {
         background.add(bottomPanel, BorderLayout.SOUTH);
 
         // Uses the array to allow modification inside the lambda expression of the timer
-        int[] progress = {0};
+        int[] progress = {100};
         javax.swing.Timer progressTimer = new javax.swing.Timer(50, e -> {
             progress[0]++;
             progressBar.setValue(progress[0]);
             
+
+            
+
             // Updates teh status when percentage reaches certain percentage
-            if (progress[0] == 10) {
+            if(progress[0] == 10) {
                 loadingStatus.setText("Checking directories...");
                 File resourcesDir = new File("resources");
                 if (!resourcesDir.exists()){
@@ -105,16 +109,43 @@ static class bootStrapper extends JFrame {
                 }  
             }
 
-            else if (progress[0] == 20) {
+            else if(progress[0] == 20) {
                 loadingStatus.setText("Loading assets...");
                 ImageIcon bg = new ImageIcon("resources\\bootStrapBG.png"); // Preloads the image to ensure it's cached
+                setIconImage(new ImageIcon("resources\\icon.png").getImage());
 
                 if (bg.getIconWidth() == -1){
                     JOptionPane.showMessageDialog(this, "Error 2: Missing file in resources. Please reinstall!");
                     System.exit(1);
                 }
             }
-            else if (progress[0] == 90) loadingStatus.setText("Almost Ready...");
+
+            else if(progress[0] == 50){
+                loadingStatus.setText("Loading system resources...");
+                new RationEngine();
+            }
+
+            else if (progress[0] == 70){
+                loadingStatus.setText("Verifying permissions...");
+                File testFile = new File("resources\\test.tmp");
+                try {
+                    boolean created = testFile.createNewFile();
+                    if(created){
+                        testFile.delete();
+                    } else 
+                    {
+                        testFile.delete();
+                    }
+                } catch (IOException ioException) {
+                    JOptionPane.showMessageDialog(this, "Error 4: Insufficient write permissions in application directory.");
+                    System.exit(1);
+                } 
+                    
+            }
+
+            else if(progress[0] == 90){
+                loadingStatus.setText("Finalizing setup...");
+            }
             
             // Checks when the progress has reached 100%, disposes the loading screen, and opens the main GUI -v-
             if (progress[0] >= 100) {
@@ -131,47 +162,104 @@ static class bootStrapper extends JFrame {
     public SmartRationGUI() {
         logger.log("SYSTEM_STARTUP", "Main Application launched.");
 
+        setIconImage(new ImageIcon("resources\\icon.png").getImage());
         setTitle("EquiEat -Smart Rationing System (SRS) - Integer Mode");
-        setSize(1100, 750);
+        setSize(1100, 700);
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE); // X = Close the program :D
         setLocationRelativeTo(null); // Windows pop up in the dead center ALWAYS
+        getContentPane().setBackground(new Color(33, 174, 192));
+
 
         // Makes a tab similar to a window tab
         // Lets you create separate tabs in the GUI
         JTabbedPane tabbedPane = new JTabbedPane();
+        tabbedPane.setUI(new RoundedTabbedPaneUI(tabbedPane));
+        tabbedPane.setFont(new Font("Arial", Font.BOLD, 25));
+
+        
+        // Style the tabbed pane like buttons
+        tabbedPane.setFont(new Font("Arial", Font.BOLD, 25));
+        tabbedPane.setTabPlacement(JTabbedPane.TOP);
 
         // TAB 1: CONTROL CENTER
         JPanel operationsPanel = new JPanel(new BorderLayout(10, 10));
-        operationsPanel.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
+        operationsPanel.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10)); // Adds padding around the panel
+        operationsPanel.setBackground(new Color(33, 174, 192)); // sets background color in to blue
+        getContentPane().setBackground(new Color(33, 174, 192)); // sets background color in to blue
+        
 
         JPanel topPanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
+
+        topPanel.setBackground(new Color(33, 174, 192));
+
         JButton loadBtn = new JButton("1. Import Demographic CSV");
+        loadBtn.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
         statusLabel = new JLabel("Status: Waiting for Data...");
-        statusLabel.setForeground(Color.RED);
+        statusLabel.setFont(new Font("Arial", Font.PLAIN, 25));
+        statusLabel.setForeground(Color.WHITE);
+
         loadBtn.addActionListener(e -> loadCSV());
+        loadBtn.setBackground(new Color(76, 175, 80)); // Sets background into GREEN
+        loadBtn.setForeground(Color.WHITE);
+        loadBtn.setFont(new Font("Arial",Font.BOLD, 20));
+
+        loadBtn.setUI(new javax.swing.plaf.metal.MetalButtonUI());
+
+        loadBtn.setOpaque(true);
+        loadBtn.setFocusPainted(false);
+
+        loadBtn.setBorder(BorderFactory.createCompoundBorder(
+            BorderFactory.createLineBorder(new Color(56, 142, 60), 3), // Dark green border
+            BorderFactory.createEmptyBorder(10, 20, 10, 20)            // Padding
+        ));
+        
         topPanel.add(loadBtn);
         topPanel.add(statusLabel);
         operationsPanel.add(topPanel, BorderLayout.NORTH);
+        
 
         JPanel formPanel = createInventoryForm();
+
         String[] invCols = {"Category", "Item Name", "Qty", "Target Priority"};
         inventoryTableModel = new DefaultTableModel(invCols, 0);
         JTable invTable = new JTable(inventoryTableModel);
         JScrollPane invScroll = new JScrollPane(invTable);
-        invScroll.setBorder(BorderFactory.createTitledBorder("2. Warehouse Inventory"));
+        invScroll.setBorder(BorderFactory.createTitledBorder(BorderFactory.createLineBorder(new Color(255, 255, 255), 2), "2. Warehouse Inventory"));
 
         JSplitPane splitPane = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, formPanel, invScroll);
         splitPane.setDividerLocation(350);
         operationsPanel.add(splitPane, BorderLayout.CENTER);
 
         JButton runBtn = new JButton("3. RUN DISTRIBUTION & ANALYZE POPULATION");
-        runBtn.setFont(new Font("Arial",Font.BOLD, 14));
-        runBtn.setForeground(Color.BLACK);
-        runBtn.setBackground(new Color(0, 120, 215));
+
+        runBtn.setFont(new Font("Arial",Font.BOLD, 25));
+        runBtn.setForeground(Color.WHITE);
+        runBtn.setBackground(new Color(76, 175, 80)); // Sets background into GREEN
+        runBtn.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        
+        runBtn.setUI(new javax.swing.plaf.metal.MetalButtonUI());
+
+        runBtn.setOpaque(true);
+        runBtn.setFocusPainted(false);
+
+        // Add custom border
+        runBtn.setBorder(BorderFactory.createCompoundBorder(
+            BorderFactory.createLineBorder(new Color(56, 142, 60), 3), // Dark green border
+            BorderFactory.createEmptyBorder(10, 20, 10, 20)            // Padding
+        ));       
+        
         runBtn.addActionListener(e -> runDistribution(tabbedPane));
+
         operationsPanel.add(runBtn, BorderLayout.SOUTH);
 
-        tabbedPane.addTab("Control Center", operationsPanel);
+        // Load icons for tabs (create small icons, e.g., 20x20 pixels)
+        ImageIcon controlIcon = createScaledIcon("resources\\icon.png", 20, 20);
+        ImageIcon resultsIcon = createScaledIcon("resources\\icon.png", 20, 20);
+        ImageIcon reserveIcon = createScaledIcon("resources\\icon.png", 20, 20);
+
+        tabbedPane.addTab("Control Center", controlIcon, operationsPanel);
+        tabbedPane.setBackgroundAt(0, new Color(26, 62, 66)); // Blue background
+        tabbedPane.setForegroundAt(0, Color.WHITE); // White text
 
         // RESULTS
         JPanel resultsPanel = new JPanel(new BorderLayout());
@@ -183,9 +271,15 @@ static class bootStrapper extends JFrame {
         resultsPanel.add(new JScrollPane(resultsTable), BorderLayout.CENTER);
 
         JButton exportBtn = new JButton("Export Reports & Tickets");
+        exportBtn.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        exportBtn.setOpaque(true);
+        exportBtn.setBorderPainted(false);
         exportBtn.addActionListener(e -> exportResults());
         resultsPanel.add(exportBtn, BorderLayout.SOUTH);
-        tabbedPane.addTab("Distribution Results", resultsPanel);
+
+        tabbedPane.addTab("Distribution Results", resultsIcon, resultsPanel);
+        tabbedPane.setBackgroundAt(1, new Color(26, 62, 66)); // Green background
+        tabbedPane.setForegroundAt(1, Color.WHITE); // White text
 
         // RESERVE
         JPanel reservePanel = new JPanel(new BorderLayout());
@@ -196,14 +290,26 @@ static class bootStrapper extends JFrame {
         reserveTable.getTableHeader().setBackground(new Color(255, 200, 100));
         reservePanel.add(new JScrollPane(reserveTable), BorderLayout.CENTER);
         reservePanel.add(new JLabel("  * Includes Specialized Medicine and Leftovers (Whole Numbers Only)"), BorderLayout.SOUTH);
-        tabbedPane.addTab("Reserve & Excess Stock", reservePanel);
+        tabbedPane.addTab("Reserve & Excess Stock", reserveIcon, reservePanel);
+        tabbedPane.setBackgroundAt(2, new Color(26, 62, 66)); // Orange background
+        tabbedPane.setForegroundAt(2, Color.WHITE); // White text
 
         add(tabbedPane);
+
+        
     }
 
     private JPanel createInventoryForm() {
         JPanel panel = new JPanel(new GridLayout(0, 1, 5, 5));
-        panel.setBorder(BorderFactory.createTitledBorder("Add Supply Item"));
+        
+        panel.setBorder(BorderFactory.createCompoundBorder(
+            BorderFactory.createLineBorder(new Color(118, 139, 154), 3), // Outer border
+            BorderFactory.createTitledBorder(BorderFactory.createLineBorder(new Color(255, 255, 255), 2), "1. Add Inventory Items")
+        ));
+        
+        panel.setBackground(new Color(165, 165, 165));
+
+
 
         JComboBox<SupplyCategory> catBox = new JComboBox<>(SupplyCategory.values());
         JTextField nameField = new JTextField();
@@ -313,6 +419,7 @@ static class bootStrapper extends JFrame {
             return;
         }
 
+
         // Reset
         for (Family f : loadedFamilies) f.clearReceived();
         for (Supply s : inventoryList) s.setLeftover(0);
@@ -349,6 +456,7 @@ static class bootStrapper extends JFrame {
 
         // Show result with Demographic Info
         JOptionPane.showMessageDialog(this, censusReport);
+
     }
 
     private void exportResults() {
@@ -363,6 +471,20 @@ static class bootStrapper extends JFrame {
         } catch (Exception e) {
             JOptionPane.showMessageDialog(this, "Error exporting: " + e.getMessage());
         }
+    }
+
+    // Helper method to load and scale icons for tabs
+    private ImageIcon createScaledIcon(String path, int width, int height) {
+        try {
+            ImageIcon icon = new ImageIcon(path);
+            if (icon.getIconWidth() > 0) {
+                Image scaledImage = icon.getImage().getScaledInstance(width, height, Image.SCALE_SMOOTH);
+                return new ImageIcon(scaledImage);
+            }
+        } catch (Exception e) {
+            System.err.println("Could not load icon: " + path);
+        }
+        return null; // Return null if icon can't be loaded (tab will show text only)
     }
 
     // Demographic Analysis
@@ -403,13 +525,66 @@ static class bootStrapper extends JFrame {
     }
 
     //  Audit Logger (For Transparency) NO TO CORRUPTION :P
+    //  Modified into HTML Format for better and easier reading 💪 
     public static class AuditLogger {
-        private final String LOG_FILE = "audit_log.txt";
+        private final String LOG_FILE = "audit_log.html";
+        
         public void log(String action, String details) {
-            try (PrintWriter pw = new PrintWriter(new FileWriter(LOG_FILE, true))) {
-                String timestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
-                pw.printf("[%s] [%s] %s%n", timestamp, action, details);
-            } catch (IOException e) { System.err.println("Logger Error: " + e.getMessage()); }
+            File logFile = new File(LOG_FILE);
+            boolean fileExists = logFile.exists();
+
+            try{
+                if(!fileExists){
+                    try (PrintWriter pw = new PrintWriter(new FileWriter(LOG_FILE))){
+                        pw.println("<!DOCTYPE html>");
+                        pw.println("<html><head><title>EquiEat - Audit Log</title>");
+                        pw.println("<meta charset='UTF-8'>");
+                        pw.println("<style>");
+                        pw.println("body{font-family: Arial, \"Times New Roman\", Times , serif; background: linear-gradient(to bottom, #47BECE, #F3F3EF); height: 100%; margin: 0; background-repeat: no-repeat; background-attachment: fixed; padding: 20px;}");
+                        pw.println("nav{position: fixed; display: flex; top:0; right:0; width:100%; background-color: #fff; padding: 1rem; flex-direction: column; gap:1rem; justify-content: center; z-index: 10;}");
+                        pw.println("h1 {color: #21AEC0; text-align: center; letter-spacing: 2px; font-style: Arial ;}");
+                        pw.println("table {width: 100%; border-collapse: collapse; background-color: #fff; box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1); margin-top: 100px;}");
+                        pw.println("th {background: #21aec0; color: #fff; padding: 12px; text-align: left; border: 2px solid #fff;}");
+                        pw.println("td {padding: 10px; border-bottom: 1px solid #ddd;}");
+                        pw.println("tr:hover {background-color: #f1f1f1;}");
+                        pw.println(".Timestamp {color: #666; font-size: 14px;}");
+                        pw.println(".action {color: #333; font-weight: bold;}");
+                        pw.println(".details {color: #555; font-size: 14px;}");
+                        pw.println(".SYSTEM_STARTUP {color: #4CAF50;}");
+                        pw.println(".DATA_LOAD {color: #2196F3;}");
+                        pw.println(".INVENTORY_ADD {color:#FF9800;}");
+                        pw.println(".DISTRIBUTION_RUN {color: #9C27B0;}");
+                        pw.println(".EXPORT {color: #E91E63;}");
+                        pw.println("</style></head><body>");
+                        pw.println("<nav><h1>EquiEat Audit Log</h1></nav>");
+                        pw.println("<table><tr><th>Timestamp</th><th>Action</th><th>Details</th></tr>");
+                        pw.println("<!-- LOG_ENTRIES -->");
+                        pw.println("</table>");
+                        pw.println("</body></html>");
+                    }
+                }
+
+                StringBuilder content = new StringBuilder();
+                try(BufferedReader br = new BufferedReader(new FileReader(LOG_FILE))){
+                    String line;
+                    while((line = br.readLine()) != null){
+                        content.append(line).append("\n");
+                    }
+                }
+
+                String timeStamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
+                String newEntry = String.format("<tr><td class='timestamp'>%s</td><td class='action %s'>%s</td><td class='details'>%s</td></tr>\n<!-- LOG_ENTRIES -->", timeStamp, action, action, details);
+
+                String updatedContent = content.toString().replace("<!-- LOG_ENTRIES -->", newEntry + "<!-- LOG_ENTRIES -->");
+
+                try (PrintWriter pw = new PrintWriter(new FileWriter(LOG_FILE))) {
+                    pw.print(updatedContent);
+                }
+
+            }catch(IOException e){
+                System.err.println("Logger Error: " + e.getMessage());
+            }
+
         }
     }
 
@@ -559,6 +734,43 @@ static class bootStrapper extends JFrame {
                     }
                 }
             }
+        }
+    }
+    // method to change the tab color and make it rounded
+    static class RoundedTabbedPaneUI extends BasicTabbedPaneUI {
+        private JTabbedPane tabbedPane;
+        
+        // Constructor to receive the tabbed pane for accessing.
+        public RoundedTabbedPaneUI(JTabbedPane tabPane) {
+            this.tabbedPane = tabPane;
+        }
+        
+        @Override
+        protected void paintTabBackground(Graphics g, int tabPlacement, int tabIndex,
+                                           int x, int y, int w, int h, boolean isSelected) {
+            Graphics2D g2d = (Graphics2D) g;
+            g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+                                        
+            // Get the tab color
+            g2d.setColor(tabbedPane.getBackgroundAt(tabIndex));
+                                        
+            // Draw rounded rectangle
+            g2d.fillRoundRect(x, y, w, h, 15, 15); // 15 = corner radius
+        }
+
+        @Override
+        protected Insets getTabInsets(int tabPlacement, int tabIndex){
+            return new Insets(10,12,8, 12); // Adds padding around the tab text for better appearance
+        }
+
+        @Override
+        protected void paintContentBorder(Graphics g, int tabPlacement, int selectedIndex) {
+            // No content border for a cleaner look
+        }
+
+        @Override 
+        protected Insets getTabAreaInsets(int tabPlacement){
+            return new Insets(15, 10, 15, 10);
         }
     }
 }
