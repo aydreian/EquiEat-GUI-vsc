@@ -461,12 +461,12 @@ static class bootStrapper extends JFrame {
 
     private void exportResults() {
         try {
-            ReportGenerator.generatePackingList(loadedFamilies, "Final_Packing_List.csv");
+            ReportGenerator.generatePackingList(loadedFamilies, "Final_Packing_List.html");
             ReportGenerator.generateReserveReport(inventoryList, "Reserve_Stock_Report.txt");
             StubGenerator.generateHTMLStubs(loadedFamilies, "Claim_Stubs.html");
-            logger.log("EXPORT", "Files generated: CSV, TXT, HTML.");
+            logger.log("EXPORT", "Files generated: HTML, TXT, HTML.");
 
-            JOptionPane.showMessageDialog(this, "Files Generated:\n1. Final_Packing_List.csv\n2. Reserve_Stock_Report.txt\n3. Claim_Stubs.html");
+            JOptionPane.showMessageDialog(this, "Files Generated:\n1. Final_Packing_List.html\n2. Reserve_Stock_Report.txt\n3. Claim_Stubs.html");
             Desktop.getDesktop().open(new File("Claim_Stubs.html"));
         } catch (Exception e) {
             JOptionPane.showMessageDialog(this, "Error exporting: " + e.getMessage());
@@ -707,18 +707,50 @@ static class bootStrapper extends JFrame {
         }
     }
 
+    // makes CVS into HTML for better reading and printting
     public static class ReportGenerator {
         public static void generatePackingList(List<Family> fList, String fname) throws IOException {
             try (PrintWriter pw = new PrintWriter(new FileWriter(fname))) {
-                pw.println("Family_ID,Head,Size,Priorities,Ration_Allocation");
+                
+                pw.println("<!DOCTYPE html>");
+                pw.println("<html><head><title>EquiEat - Packing List</title></head><body>");
+                pw.println("<meta charset='UTF-8'>");
+                pw.println("<style>");
+                pw.println("body{font-family: Arial, \"Times New Roman\", Times , serif; background: linear-gradient(to bottom, #47BECE, #F3F3EF); height: 100%; margin: 0; background-repeat: no-repeat; background-attachment: fixed; padding: 20px;}\r\n");
+                pw.println("nav{position: flex; top:0; right:0; width:100%; background-color: #fff; padding: 1rem; flex-direction: column; gap:1rem; justify-content: center; z-index: 10;}");
+                pw.println("h1 {color: #21AEC0; text-align: center; letter-spacing: 2px; font-style: Arial ;}");
+                pw.println("table {width: 100%; border-collapse: collapse; background-color: #fff; box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1); margin-top: 100px;}");
+                pw.println("th {background: #21aec0; color: #fff; padding: 12px; text-align: left; border: 2px solid #fff;}");
+                pw.println("td {padding: 10px; border-bottom: 1px solid #ddd;}");
+                pw.println("tr:hover {background-color: #f1f1f1;}");
+                pw.println(".priority {color: #d32f2f; font-weight: bold; font-size: 12px;}");
+                pw.println(".allocation {color: #555; font-size: 14px;}");
+                pw.println("</style></head><body>");
+                pw.println("<nav><h1>Final Packing List</h1></nav>");
+                pw.println("<table><tr><th>Family ID</th><th>Head of Family</th><th>Size</th><th>Priorities</th><th>Ration Allocation</th></tr>");
+
                 for (Family f : fList) {
-                    pw.printf("%s,%s,%d,%s,\"%s\"%n",
-                            f.getId(), f.getHeadOfFamily(), f.getMemberCount(),
-                            f.attributes.toString().replace(",", " "),
-                            f.getFormattedPackingList());
+                    pw.printf("<tr><td>%s</td><td>%s</td><td>%d</td><td class='priority'>%s</td><td class='allocation'>%s</td></tr>%n",
+                        escapeHtml(f.getId()), 
+                        escapeHtml(f.getHeadOfFamily()), 
+                        f.getMemberCount(),
+                        escapeHtml(f.attributes.toString().replace(",", " ")),
+                        escapeHtml(f.getFormattedPackingList()));
                 }
+                pw.println("</table>");
+                pw.println("</body></html>");
+
             }
         }
+
+        private static String escapeHtml(String text){
+            return text.replace("&", "&amp;")
+                       .replace("<", "&lt;")
+                       .replace(">", "&gt;")
+                       .replace("\"", "&quot;")
+                       .replace("'", "&#39;");
+        }
+
         public static void generateReserveReport(List<Supply> inv, String fname) throws IOException {
             try (PrintWriter pw = new PrintWriter(new FileWriter(fname))) {
                 pw.println("=== RESERVE & MEDICAL REPORT ===");
