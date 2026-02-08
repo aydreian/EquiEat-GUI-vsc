@@ -1,129 +1,127 @@
+import javax.swing.*;
+import javax.swing.table.DefaultTableModel;
+import javax.swing.table.DefaultTableCellRenderer;
+import javax.swing.table.TableCellRenderer;
+import java.awt.image.BufferedImage;
 import java.awt.*;
-import java.awt.geom.RoundRectangle2D;
 import java.io.*;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.List;
-import javax.swing.*;
-import javax.swing.table.DefaultTableModel;
 
 /**
  * EquiEat - SMART RATIONING SYSTEM 
  * ---------------------------------------------------------
- * FEATURES:
- * 1. Demographic Analysis: Counts Infants, Seniors, Injured, etc.
- * 2. Audit Log: Logs actions to 'audit_log.txt'.
- * 3. Claim Stubs: Generates printable HTML tickets.
+ * What does this app do?
+ * - Help distribute food/supplies fairly to families in need
+ * - Keep a record of what was given to who
+ * - Print out tickets so families can claim their supplies
+ * 
+ * Main Sections:
+ * 1. Load family data from a CSV file
+ * 2. Add supplies to warehouse
+ * 3. Calculate fair sharing
+ * 4. Show results in tables
+ * 5. Save reports as files
+ * 
+ * How to think about this:
+ * - Family = one household needing supplies
+ * - Supply = one type of item in warehouse (rice, beans, medicine, etc)
+ * - Distribution = giving each family their fair share
+ * - Leftover = extra items that couldn't be divided fairly
  */
 public class SmartRationGUI extends JFrame { // Creates our GUI/Window
 
-    // To Save The Data We Use Private
-    // Local Variable Disappears After Being Used In A Method
-    // Only This Class Will Be Able To Modify These PRIVATE Variables (Para hindi magalaw ng ibang class)
+    // TODO: Store family and supply data
+    // Remember all families and supplies throughout the app
     private List<Family> loadedFamilies = new ArrayList<>();
     private List<Supply> inventoryList = new ArrayList<>();
 
-    // For Data Visualization We Put It Into A Model
-    // You Can't Add It Directly As A Data To A Table Or You Can But Mahirap and Hassle
-    // MVC: Model-View-Controller (Java Swing)
+    // Todo checklist - Main App Setup
+    // [x] Create main window donee
+    // [x] Make 3 tabs (Control, Results, Reserves) doneeee
+    // [x] Add buttons for loading data and running distribution doneee
+    // [x] Connect buttons to actions doneeeeeeee
+    // [x] Make tables look nice with colors doneeeeeeeee
+
+    // Tables need "models" to hold data
+    // Think of model = the container, table = how it looks on screen
     private DefaultTableModel inventoryTableModel;
     private DefaultTableModel resultsTableModel;
     private DefaultTableModel reserveTableModel;
-    private JLabel statusLabel; // Our UI Feedback: Status of Waiting for Data Or Received
+    private JLabel statusLabel; // Shows busy/ready status
 
-    // ENGINES | BRAINS
-    // Private Final Variable So That It Will Not Be Change ANYWHERE
-    // Private so that only this class will be able to touch it or modify
-    // BUT usage of final so that it CANNOT be modified as it will be absolute
-    // And we only need one brain or engine within our program
+    // Engine = robot that does math and distributes supplies
+    // Logger = assistant that writes down everything we do
+    // FINAL = can't change these once created
     private final RationEngine engine = new RationEngine();
     private final AuditLogger logger = new AuditLogger();
 
     
-    // try-catch method
-    // try { unsure input / risky input } catch {what you do after an error occurs}
+    // Try = "try this code"
+    // Catch = "if something breaks, do this instead"
+    // This protects the program from crashing
     public static void main(String[] args) {
-        try { UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName()); } // Bases the UI on the OS Used
-        catch (Exception ignored) {} // If an error happens, simply ignore
-        SwingUtilities.invokeLater(() -> new bootStrapper().setVisible(true)); // Prevents the GUI to crash
+        try { UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName()); } // Make it look like Windows/Mac
+        catch (Exception ignored) {} // If fail, just ignore
+        SwingUtilities.invokeLater(() -> new bootStrapper().setVisible(true)); // Show loading screen
     } // Lets the background thread do the math while the EDT provides the user GUI
 
-    // Bootstrap/Loading Screen Class 
-    // This makes an illusion that something is processing while the program is loading the main GUI
+    // Loading screen - shows fancy animation while app starts
+    // Makes user think something is happening
 static class bootStrapper extends JFrame {
     public bootStrapper() {
         AuditLogger tempLogger = new AuditLogger();
         tempLogger.log("SYSTEM_STARTUP", "Application launched.");
-
         
         setTitle("BootStrapper - Smart Rationing System");
-        setSize(400, 200);
+        setSize(1000, 500);
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setLocationRelativeTo(null);
-        setUndecorated(true); // Makes no border or titlebar
-        setShape(new RoundRectangle2D.Double(0, 0, getWidth(), getHeight(), 20, 20)); // Roundds the corners of the window
-        
 
-        // Inputs background image and sets it as the content pane, allowing us to add components on top of it
-        JLabel background = new JLabel(new ImageIcon("resources\\bootStrapBG.png"));
+        // Put background image as the base
+        // All buttons and labels go on top of it
+        JLabel background = new JLabel(new ImageIcon("bootStrapBG.png"));
         background.setLayout(new BorderLayout());
         setContentPane(background);
-
         
-        //initializes the labels of this loading screen
+        // Setup the text for loading screen
         JLabel label = new JLabel("Loading EquiEat Smart Rationing System...", SwingConstants.CENTER);
-        label.setFont(new Font("Arial", Font.BOLD, 14));
+        label.setFont(new Font("Arial", Font.BOLD, 20));
         
         
         JPanel bottomPanel = new JPanel(new BorderLayout());
         JLabel loadingStatus = new JLabel("Loading... ", SwingConstants.LEFT);
-        JProgressBar progressBar = new JProgressBar(0, 100); // Uses the progress bar to visually show the loading progress
-        
-        progressBar.setStringPainted(true);
+        JLabel percentage = new JLabel("0%", SwingConstants.RIGHT);
         loadingStatus.setFont(new Font("Arial", Font.PLAIN, 15));
-        progressBar.setFont(new Font("Arial", Font.PLAIN, 15));
+        percentage.setFont(new Font("Arial", Font.PLAIN, 15));
         
         bottomPanel.add(loadingStatus, BorderLayout.WEST);
-        bottomPanel.add(progressBar, BorderLayout.CENTER);
+        bottomPanel.add(percentage, BorderLayout.EAST);
+        
         background.add(label, BorderLayout.CENTER);
         background.add(bottomPanel, BorderLayout.SOUTH);
 
-        // Uses the array to allow modification inside the lambda expression of the timer
+        // Need array because we want to change progress inside the timer
         int[] progress = {0};
         javax.swing.Timer progressTimer = new javax.swing.Timer(50, e -> {
             progress[0]++;
-            progressBar.setValue(progress[0]);
+            percentage.setText(progress[0] + "%");
             
-            // Updates teh status when percentage reaches certain percentage
-            if (progress[0] == 10) {
-                loadingStatus.setText("Checking directories...");
-                File resourcesDir = new File("resources");
-                if (!resourcesDir.exists()){
-                    JOptionPane.showMessageDialog(this, "Error 1: Missing 'resources' folder. Please reinstall!");
-                    System.exit(1);
-                }  
-            }
-
-            else if (progress[0] == 20) {
-                loadingStatus.setText("Loading assets...");
-                ImageIcon bg = new ImageIcon("resources\\bootStrapBG.png"); // Preloads the image to ensure it's cached
-
-                if (bg.getIconWidth() == -1){
-                    JOptionPane.showMessageDialog(this, "Error 2: Missing file in resources. Please reinstall!");
-                    System.exit(1);
-                }
-            }
+            // Update message at different percentages
+            if (progress[0] == 10) loadingStatus.setText("Loading Methods...");
+            else if (progress[0] == 50) loadingStatus.setText("Initializing Systems...");
             else if (progress[0] == 90) loadingStatus.setText("Almost Ready...");
             
-            // Checks when the progress has reached 100%, disposes the loading screen, and opens the main GUI -v-
+            // Done loading - close splash screen and show main window
             if (progress[0] >= 100) {
                 ((javax.swing.Timer)e.getSource()).stop();
                 dispose();
-                new SmartRationGUI().setVisible(true); // now calls the GUI 
+                new SmartRationGUI().setVisible(true);
             }
         });
-
+        
         progressTimer.start();
     }
 }
@@ -132,100 +130,266 @@ static class bootStrapper extends JFrame {
         logger.log("SYSTEM_STARTUP", "Main Application launched.");
 
         setTitle("EquiEat -Smart Rationing System (SRS) - Integer Mode");
-        setSize(1100, 750);
-        setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE); // X = Close the program :D
-        setLocationRelativeTo(null); // Windows pop up in the dead center ALWAYS
+        setSize(1100, 700);
+        setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE); // Close program when user clicks X
+        setLocationRelativeTo(null); // Center window on screen
 
-        // Makes a tab similar to a window tab
-        // Lets you create separate tabs in the GUI
+        // Load and scale the window icon (32x32 pixels)
+        try {
+            ImageIcon icon = new ImageIcon("icon.png");
+            Image scaledIcon = icon.getImage().getScaledInstance(32, 32, Image.SCALE_SMOOTH);
+            setIconImage(scaledIcon);
+        } catch (Exception ignored) {}
+
+        // Global light gray background for the main window
+        getContentPane().setBackground(new Color(240, 240, 240));
+
+        // Create tabbed interface (tabs at top, each with different content)
         JTabbedPane tabbedPane = new JTabbedPane();
+        tabbedPane.setBackground(new Color(33, 174, 192));
+        tabbedPane.setForeground(Color.BLACK);
+        tabbedPane.setFont(new Font("SansSerif", Font.BOLD, 12));
 
-        // TAB 1: CONTROL CENTER
+        // TAB 1: MAIN CONTROL PANEL - where users import data and add inventory items
         JPanel operationsPanel = new JPanel(new BorderLayout(10, 10));
         operationsPanel.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
+        operationsPanel.setBackground(new Color(240, 240, 240));
 
-        JPanel topPanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
-        JButton loadBtn = new JButton("1. Import Demographic CSV");
+        JPanel topPanel = new JPanel(new BorderLayout());
+        topPanel.setOpaque(true);
+        topPanel.setBackground(new Color(33, 174, 192));
+
+        JButton loadBtn = new JButton(" 1. Import Demographic CSV");
+        loadBtn.setFocusable(false);
+        loadBtn.setIcon(createTextIcon("↓", Color.WHITE, new Color(76, 175, 80), 18));
+        loadBtn.setBackground(new Color(76, 175, 80)); loadBtn.setForeground(Color.BLACK);
+        loadBtn.setFont(new Font("SansSerif", Font.BOLD, 12));
+
         statusLabel = new JLabel("Status: Waiting for Data...");
-        statusLabel.setForeground(Color.RED);
+        statusLabel.setFont(new Font("SansSerif", Font.BOLD, 13));
+        statusLabel.setForeground(Color.WHITE);
         loadBtn.addActionListener(e -> loadCSV());
-        topPanel.add(loadBtn);
-        topPanel.add(statusLabel);
+
+        JPanel leftTop = new JPanel(new FlowLayout(FlowLayout.LEFT, 12, 8));
+        leftTop.setOpaque(false);
+        leftTop.add(loadBtn);
+        leftTop.add(statusLabel);
+        topPanel.add(leftTop, BorderLayout.WEST);
+
+        JPanel rightTop = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 8));
+        rightTop.setOpaque(false);
+        JLabel equieatBrand = new JLabel("EquiEat");
+        equieatBrand.setFont(new Font("SansSerif", Font.BOLD, 30));
+        equieatBrand.setForeground(Color.WHITE);
+        ImageIcon logoIcon = null;
+        try { logoIcon = new ImageIcon("logo.png"); } catch (Exception ignored) {}
+        JLabel logoLabel = (logoIcon != null && logoIcon.getIconWidth() > 0)
+            ? new JLabel(logoIcon)
+            : new JLabel("Supplies", SwingConstants.CENTER);
+        logoLabel.setPreferredSize(new Dimension(100, 100));
+        logoLabel.setForeground(Color.WHITE);
+        rightTop.add(equieatBrand);
+        rightTop.add(logoLabel);
+        topPanel.add(rightTop, BorderLayout.EAST);
+
         operationsPanel.add(topPanel, BorderLayout.NORTH);
 
         JPanel formPanel = createInventoryForm();
         String[] invCols = {"Category", "Item Name", "Qty", "Target Priority"};
         inventoryTableModel = new DefaultTableModel(invCols, 0);
         JTable invTable = new JTable(inventoryTableModel);
+        invTable.setRowHeight(35);
+        invTable.setDefaultRenderer(Object.class, new StripedTableCellRenderer());
+        invTable.getTableHeader().setBackground(new Color(33, 174, 192));
+        invTable.getTableHeader().setForeground(Color.BLACK);
+        invTable.getTableHeader().setFont(new Font("SansSerif", Font.BOLD, 12));
         JScrollPane invScroll = new JScrollPane(invTable);
-        invScroll.setBorder(BorderFactory.createTitledBorder("2. Warehouse Inventory"));
+        invScroll.setBorder(BorderFactory.createCompoundBorder(
+            BorderFactory.createTitledBorder(
+                BorderFactory.createLineBorder(new Color(255, 140, 0), 2),
+                "2. Warehouse Inventory"
+            ),
+            BorderFactory.createEmptyBorder(5, 5, 5, 5)
+        ));
 
         JSplitPane splitPane = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, formPanel, invScroll);
         splitPane.setDividerLocation(350);
         operationsPanel.add(splitPane, BorderLayout.CENTER);
 
-        JButton runBtn = new JButton("3. RUN DISTRIBUTION & ANALYZE POPULATION");
-        runBtn.setFont(new Font("Arial",Font.BOLD, 14));
+        JButton runBtn = new JButton(" 3. RUN DISTRIBUTION & ANALYZE POPULATION");
+        runBtn.setFont(new Font("SansSerif", Font.BOLD, 13));
+        runBtn.setBackground(new Color(32, 160, 162));
         runBtn.setForeground(Color.BLACK);
-        runBtn.setBackground(new Color(0, 120, 215));
+        runBtn.setFocusable(false);
+        runBtn.setIcon(createTextIcon("▶", Color.WHITE, new Color(32, 160, 162), 16));
         runBtn.addActionListener(e -> runDistribution(tabbedPane));
         operationsPanel.add(runBtn, BorderLayout.SOUTH);
 
         tabbedPane.addTab("Control Center", operationsPanel);
 
-        // RESULTS
+        // Display distribution results in table format
         JPanel resultsPanel = new JPanel(new BorderLayout());
+        resultsPanel.setOpaque(true);
+        resultsPanel.setBackground(new Color(240, 240, 240));
         String[] resCols = {"Family ID", "Head of Family", "Size", "Needs", "RATION PACK CONTENT"};
         resultsTableModel = new DefaultTableModel(resCols, 0);
         JTable resultsTable = new JTable(resultsTableModel);
         resultsTable.setRowHeight(30);
+        resultsTable.setDefaultRenderer(Object.class, new StripedTableCellRenderer());
+        // Center-align the header text for better layout
+        ((DefaultTableCellRenderer)resultsTable.getTableHeader().getDefaultRenderer()).setHorizontalAlignment(SwingConstants.CENTER);
+        resultsTable.getTableHeader().setBackground(new Color(32, 160, 162));
+        resultsTable.getTableHeader().setForeground(Color.BLACK);
+        resultsTable.getTableHeader().setFont(new Font("Arial", Font.BOLD, 12));
+        // Column sizing
+        resultsTable.getColumnModel().getColumn(0).setPreferredWidth(90);
+        resultsTable.getColumnModel().getColumn(1).setPreferredWidth(200);
+        resultsTable.getColumnModel().getColumn(2).setPreferredWidth(50);
+        resultsTable.getColumnModel().getColumn(3).setPreferredWidth(150);
         resultsTable.getColumnModel().getColumn(4).setPreferredWidth(500);
-        resultsPanel.add(new JScrollPane(resultsTable), BorderLayout.CENTER);
+        // Use text-wrapping renderer for the packing content column (so long text wraps to multiple lines)
+        resultsTable.getColumnModel().getColumn(4).setCellRenderer(new WrapCellRenderer());
+        // Center-align the numeric size column
+        resultsTable.getColumnModel().getColumn(2).setCellRenderer(new DefaultTableCellRenderer() {{ setHorizontalAlignment(SwingConstants.CENTER); setBackground(new Color(243,247,255)); }});
+        JScrollPane resultsScroll = new JScrollPane(resultsTable);
+        resultsScroll.setBorder(BorderFactory.createCompoundBorder(
+            BorderFactory.createTitledBorder(BorderFactory.createLineBorder(new Color(32, 160, 162), 2), "Distribution Results"),
+            BorderFactory.createEmptyBorder(5,5,5,5)
+        ));
+        resultsPanel.add(resultsScroll, BorderLayout.CENTER);
 
-        JButton exportBtn = new JButton("Export Reports & Tickets");
+        JButton exportBtn = new JButton(" Export Reports & Tickets");
+        exportBtn.setIcon(createTextIcon("⇩", Color.BLACK, new Color(32, 160, 162), 16));
+        exportBtn.setBackground(new Color(32, 160, 162)); exportBtn.setForeground(Color.BLACK);
+        exportBtn.setFont(new Font("SansSerif", Font.BOLD, 12));
+        exportBtn.setFocusable(false);
         exportBtn.addActionListener(e -> exportResults());
         resultsPanel.add(exportBtn, BorderLayout.SOUTH);
         tabbedPane.addTab("Distribution Results", resultsPanel);
 
-        // RESERVE
+        // Reserve and excess stock section - shows leftover items
         JPanel reservePanel = new JPanel(new BorderLayout());
+        reservePanel.setOpaque(true);
+        reservePanel.setBackground(new Color(240, 240, 240));
         String[] reserveCols = {"Category", "Item Name", "RESERVE QUANTITY", "Status Note"};
         reserveTableModel = new DefaultTableModel(reserveCols, 0);
         JTable reserveTable = new JTable(reserveTableModel);
-        reserveTable.setRowHeight(25);
-        reserveTable.getTableHeader().setBackground(new Color(255, 200, 100));
-        reservePanel.add(new JScrollPane(reserveTable), BorderLayout.CENTER);
+        reserveTable.setRowHeight(28);
+        reserveTable.setDefaultRenderer(Object.class, new StripedTableCellRenderer());
+        ((DefaultTableCellRenderer)reserveTable.getTableHeader().getDefaultRenderer()).setHorizontalAlignment(SwingConstants.CENTER);
+        reserveTable.getTableHeader().setBackground(new Color(32, 160, 162));
+        reserveTable.getTableHeader().setForeground(Color.BLACK);
+        reserveTable.getTableHeader().setFont(new Font("SansSerif", Font.BOLD, 12));
+        // Column sizing for clarity
+        reserveTable.getColumnModel().getColumn(0).setPreferredWidth(120);
+        reserveTable.getColumnModel().getColumn(1).setPreferredWidth(220);
+        reserveTable.getColumnModel().getColumn(2).setPreferredWidth(120);
+        reserveTable.getColumnModel().getColumn(3).setPreferredWidth(160);
+        // Apply special renderers: wrap item names, right-align quantities, color-code status
+        reserveTable.getColumnModel().getColumn(1).setCellRenderer(new WrapCellRenderer());
+        reserveTable.getColumnModel().getColumn(2).setCellRenderer(new IntegerCellRenderer());
+        reserveTable.getColumnModel().getColumn(3).setCellRenderer(new StatusCellRenderer());
+        JScrollPane reserveScroll = new JScrollPane(reserveTable);
+        reserveScroll.setBorder(BorderFactory.createCompoundBorder(
+            BorderFactory.createTitledBorder(BorderFactory.createLineBorder(new Color(32, 160, 162), 2), "Reserve & Excess Stock"),
+            BorderFactory.createEmptyBorder(5,5,5,5)
+        ));
+        reservePanel.add(reserveScroll, BorderLayout.CENTER);
         reservePanel.add(new JLabel("  * Includes Specialized Medicine and Leftovers (Whole Numbers Only)"), BorderLayout.SOUTH);
         tabbedPane.addTab("Reserve & Excess Stock", reservePanel);
+
+        // Add colored icons to tabs for visual identification
+        tabbedPane.setIconAt(0, createCircleIcon(new Color(33, 130, 220), 14));
+        tabbedPane.setIconAt(1, createCircleIcon(new Color(60, 120, 200), 14));
+        tabbedPane.setIconAt(2, createCircleIcon(new Color(255, 140, 0), 14));
 
         add(tabbedPane);
     }
 
     private JPanel createInventoryForm() {
-        JPanel panel = new JPanel(new GridLayout(0, 1, 5, 5));
-        panel.setBorder(BorderFactory.createTitledBorder("Add Supply Item"));
+        // TO-DO: Create the form where user adds supplies
+        // Step 1: Make panel
+        // Step 2: Add dropdown for category
+        // Step 3: Add text boxes for name and quantity
+        // Step 4: Add button to confirm
+        
+        // USE: Orange color theme to stand out from other sections
+        JPanel panel = new JPanel(new GridLayout(0, 1, 6, 6));
+        panel.setOpaque(true);
+        panel.setBackground(new Color(230, 230, 230));
+        panel.setBorder(BorderFactory.createCompoundBorder(
+            BorderFactory.createTitledBorder(
+                BorderFactory.createLineBorder(new Color(255, 140, 0), 2),
+                "Add Supply Item"
+            ),
+            BorderFactory.createEmptyBorder(10, 10, 10, 10)
+        ));
 
         JComboBox<SupplyCategory> catBox = new JComboBox<>(SupplyCategory.values());
+        catBox.setBackground(Color.WHITE);
+        catBox.setForeground(new Color(0, 0, 0));
+        catBox.setFont(new Font("SansSerif", Font.BOLD, 12));
+        
         JTextField nameField = new JTextField();
+        nameField.setBackground(Color.WHITE);
+        nameField.setForeground(Color.BLACK);
+        nameField.setCaretColor(Color.BLACK);
+        nameField.setFont(new Font("SansSerif", Font.BOLD, 12));
+        nameField.setBorder(BorderFactory.createLineBorder(new Color(200, 100, 0)));
+        
         JTextField qtyField = new JTextField();
+        qtyField.setBackground(Color.WHITE);
+        qtyField.setForeground(Color.BLACK);
+        qtyField.setCaretColor(Color.BLACK);
+        qtyField.setFont(new Font("SansSerif", Font.BOLD, 12));
+        qtyField.setBorder(BorderFactory.createLineBorder(new Color(200, 100, 0)));
+        
         JComboBox<PriorityAttribute> prioBox = new JComboBox<>(PriorityAttribute.values());
         prioBox.insertItemAt(null, 0);
         prioBox.setSelectedIndex(0);
+        prioBox.setBackground(Color.WHITE);
+        prioBox.setForeground(new Color(0, 0, 0));
+        prioBox.setFont(new Font("SansSerif", Font.BOLD, 12));
         prioBox.setRenderer(new DefaultListCellRenderer() {
             @Override
             public Component getListCellRendererComponent(JList<?> list, Object value, int index, boolean isSelected, boolean cellHasFocus) {
                 super.getListCellRendererComponent(list, value, index, isSelected, cellHasFocus);
                 setText(value == null ? "EVERYONE (General)" : value.toString());
+                setFont(new Font("SansSerif", Font.BOLD, 12));
+                if (!isSelected) {
+                    setBackground(Color.WHITE);
+                    setForeground(new Color(0, 0, 0));
+                }
                 return this;
             }
         });
 
-        panel.add(new JLabel("Category:")); panel.add(catBox);
-        panel.add(new JLabel("Item Name:")); panel.add(nameField);
-        panel.add(new JLabel("Quantity (Total):")); panel.add(qtyField);
-        panel.add(new JLabel("Priority Target:")); panel.add(prioBox);
+        JLabel catLabel = new JLabel("Category:");
+        catLabel.setFont(new Font("SansSerif", Font.BOLD, 12));
+        catLabel.setForeground(new Color(0, 0, 0));
+        
+        JLabel nameLabel = new JLabel("Item Name:");
+        nameLabel.setFont(new Font("SansSerif", Font.BOLD, 12));
+        nameLabel.setForeground(new Color(0, 0, 0));
+        
+        JLabel qtyLabel = new JLabel("Quantity (Total):");
+        qtyLabel.setFont(new Font("SansSerif", Font.BOLD, 12));
+        qtyLabel.setForeground(new Color(0, 0, 0));
+        
+        JLabel prioLabel = new JLabel("Priority Target:");
+        prioLabel.setFont(new Font("SansSerif", Font.BOLD, 12));
+        prioLabel.setForeground(new Color(0, 0, 0));
 
-        JButton addBtn = new JButton("Add to Inventory");
+        panel.add(catLabel); panel.add(catBox);
+        panel.add(nameLabel); panel.add(nameField);
+        panel.add(qtyLabel); panel.add(qtyField);
+        panel.add(prioLabel); panel.add(prioBox);
+
+        JButton addBtn = new JButton(" Add to Inventory");
+        addBtn.setIcon(createTextIcon("+", Color.BLACK, new Color(76, 175, 80), 14));
+        addBtn.setBackground(new Color(76, 175, 80)); addBtn.setForeground(Color.BLACK);
+        addBtn.setFont(new Font("SansSerif", Font.BOLD, 11));
+        addBtn.setFocusable(false);
         addBtn.addActionListener(e -> {
             try {
                 String name = nameField.getText();
@@ -260,6 +424,11 @@ static class bootStrapper extends JFrame {
     }
 
     private List<Family> importCSV(String filePath) {
+        // TODO: Read family data from file
+        // - Read lines one by one
+        // - Find the right columns (ID, name, size)
+        // - Create Family objects
+        // - Handle bad data gracefully
         List<Family> list = new ArrayList<>();
         try (BufferedReader br = new BufferedReader(new FileReader(filePath))) {
             String line = br.readLine();
@@ -308,6 +477,12 @@ static class bootStrapper extends JFrame {
     }
 
     private void runDistribution(JTabbedPane tabs) {
+        // TODO: Main calculation happens here
+        // Step 1: Check if we have data to process
+        // Step 2: Clear old results
+        // Step 3: Calculate fair shares
+        // Step 4: Show results
+        // Step 5: Display summary
         if (loadedFamilies.isEmpty() || inventoryList.isEmpty()) {
             JOptionPane.showMessageDialog(this, "Missing Data.");
             return;
@@ -365,18 +540,18 @@ static class bootStrapper extends JFrame {
         }
     }
 
-    // Demographic Analysis
-
+    // TODO: Demographic analysis
+    // Count how many families have special needs
     public static class DemographicAnalyzer {
         public static String analyze(List<Family> families) {
             int totalFamilies = families.size();
             int totalPop = families.stream().mapToInt(Family::getMemberCount).sum();
 
-            // Vulnerability Counters (Households containing X)
+            // Count households with babies, old people, injured, PWDs
             int hasInfant = 0;
             int hasSenior = 0;
-            int hasInjured = 0; // Includes INJURED
-            int hasPWD = 0;     // Includes PWD
+            int hasInjured = 0; // Count families with injured members
+            int hasPWD = 0;     // Count families with disabled members
 
             for (Family f : families) {
                 if (f.hasAttribute(PriorityAttribute.HAS_INFANT)) hasInfant++;
@@ -385,7 +560,7 @@ static class bootStrapper extends JFrame {
                 if (f.hasAttribute(PriorityAttribute.PWD)) hasPWD++;
             }
 
-            // Build the Report String
+            // Make the summary
             StringBuilder sb = new StringBuilder();
             sb.append("EquiEat Complete!\n\n");
             sb.append("Demographic Analysis Summary:\n");
@@ -402,18 +577,22 @@ static class bootStrapper extends JFrame {
         }
     }
 
-    //  Audit Logger (For Transparency) NO TO CORRUPTION :P
+    // AuditLogger - writes down everything we do (for safety)
+    // WHY? So we can see what happened if something goes wrong
+    // Keep a record: time, action, details
     public static class AuditLogger {
         private final String LOG_FILE = "audit_log.txt";
+        // Log an action with timestamp for tracking
         public void log(String action, String details) {
             try (PrintWriter pw = new PrintWriter(new FileWriter(LOG_FILE, true))) {
+                // Format: [timestamp] [action] details
                 String timestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
                 pw.printf("[%s] [%s] %s%n", timestamp, action, details);
             } catch (IOException e) { System.err.println("Logger Error: " + e.getMessage()); }
         }
     }
 
-    // Printable Stubs For Better Distribution
+    // StubGenerator - creates printable tickets for families to claim their rations
     public static class StubGenerator {
         public static void generateHTMLStubs(List<Family> families, String filename) throws IOException {
             StringBuilder html = new StringBuilder();
@@ -443,95 +622,243 @@ static class bootStrapper extends JFrame {
         }
     }
 
-    // Model & Engines
-    // enum helps us to only collect fixed inputs; ensures "type-safe" or proper error handling
+    // Small utility to create a colored round icon for tabs and buttons
+    // INPUT: color, size  OUTPUT: small pretty circle
+    private static ImageIcon createCircleIcon(Color color, int size) {
+        BufferedImage img = new BufferedImage(size, size, BufferedImage.TYPE_INT_ARGB);
+        Graphics2D g = img.createGraphics();
+        g.setRenderingHint(java.awt.RenderingHints.KEY_ANTIALIASING, java.awt.RenderingHints.VALUE_ANTIALIAS_ON);
+        g.setColor(color);
+        g.fillOval(0, 0, size - 1, size - 1);
+        g.setColor(color.darker());
+        g.drawOval(0, 0, size - 1, size - 1);
+        g.dispose();
+        return new ImageIcon(img);
+    }
+
+    // Create a small icon with text in center (for button decorations)
+    // Make a rounded square and put text in the middle
+    private static ImageIcon createTextIcon(String text, Color fg, Color bg, int size) {
+        BufferedImage img = new BufferedImage(size, size, BufferedImage.TYPE_INT_ARGB);
+        Graphics2D g = img.createGraphics();
+        g.setRenderingHint(java.awt.RenderingHints.KEY_ANTIALIASING, java.awt.RenderingHints.VALUE_ANTIALIAS_ON);
+        // Draw background box
+        g.setColor(bg);
+        g.fillRoundRect(0, 0, size, size, size/4, size/4);
+        // Draw border
+        g.setColor(bg.darker());
+        g.drawRoundRect(0, 0, size-1, size-1, size/4, size/4);
+        // Draw the text
+        g.setColor(fg);
+        Font font = new Font("SansSerif", Font.BOLD, Math.max(10, size/2));
+        g.setFont(font);
+        FontMetrics fm = g.getFontMetrics();
+        // Center the text - both left-right and up-down
+        int tx = (size - fm.stringWidth(text)) / 2;
+        int ty = (size - fm.getHeight()) / 2 + fm.getAscent();
+        g.drawString(text, tx, ty);
+        g.dispose();
+        return new ImageIcon(img);
+    }
+
+    // StripedTableCellRenderer - makes every other row a different color
+    // WHY? Easier to read tables when rows have alternating colors
+    // EFFECT: Light gray row, light blue row, light gray row...
+    public static class StripedTableCellRenderer extends DefaultTableCellRenderer {
+        private final Color evenColor = new Color(250, 250, 250);
+        private final Color oddColor = new Color(243, 247, 255);
+
+        @Override
+        public Component getTableCellRendererComponent(JTable table, Object value, boolean isSelected, boolean hasFocus, int row, int column) {
+            super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column);
+            if (isSelected) {
+                setBackground(table.getSelectionBackground());
+                setForeground(table.getSelectionForeground());
+            } else {
+                setBackground((row % 2 == 0) ? evenColor : oddColor);
+                setForeground(Color.BLACK);
+            }
+            setBorder(noFocusBorder);
+            return this;
+        }
+    }
+
+    // WrapCellRenderer - splits long text into multiple lines
+    // PROBLEM SOLVED: Text was cut off in table cells
+    // SOLUTION: Make cells taller to fit wrapped text
+    public static class WrapCellRenderer extends JTextArea implements TableCellRenderer {
+        public WrapCellRenderer() {
+            setLineWrap(true);
+            setWrapStyleWord(true);
+            setOpaque(true);
+            setFont(new Font("SansSerif", Font.PLAIN, 12));
+        }
+
+        @Override
+        public Component getTableCellRendererComponent(JTable table, Object value, boolean isSelected, boolean hasFocus, int row, int column) {
+            setText(value == null ? "" : value.toString());
+            if (isSelected) {
+                setBackground(table.getSelectionBackground());
+                setForeground(table.getSelectionForeground());
+            } else {
+                setBackground((row % 2 == 0) ? new Color(250, 250, 250) : new Color(243, 247, 255));
+                setForeground(Color.BLACK);
+            }
+            // Adjust row height to fit wrapped text content
+            int prefHeight = (int) getPreferredSize().getHeight();
+            if (table.getRowHeight(row) != prefHeight) table.setRowHeight(row, Math.max(table.getRowHeight(row), prefHeight));
+            return this;
+        }
+    }
+
+    // IntegerCellRenderer - shows numbers on the right side of cells
+    // (Instead of left like text)
+    public static class IntegerCellRenderer extends DefaultTableCellRenderer {
+        public IntegerCellRenderer() { setHorizontalAlignment(SwingConstants.RIGHT); }
+        @Override public Component getTableCellRendererComponent(JTable table, Object value, boolean isSelected, boolean hasFocus, int row, int column) {
+            super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column);
+            setText(value == null ? "" : value.toString());
+            return this;
+        }
+    }
+
+    // StatusCellRenderer - color codes the status
+    // Red = medical stuff, Green = extra stuff we have left
+    public static class StatusCellRenderer extends DefaultTableCellRenderer {
+        @Override
+        public Component getTableCellRendererComponent(JTable table, Object value, boolean isSelected, boolean hasFocus, int row, int column) {
+            super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column);
+            String s = (value == null) ? "" : value.toString();
+            setHorizontalAlignment(SwingConstants.CENTER);
+            if (s.toLowerCase().contains("medical")) {
+                setBackground(new Color(255, 235, 238));
+                setForeground(new Color(183, 28, 28));
+            } else if (s.toLowerCase().contains("rounding") || s.toLowerCase().contains("excess")) {
+                setBackground(new Color(232, 245, 233));
+                setForeground(new Color(27, 94, 32));
+            } else {
+                setBackground((row % 2 == 0) ? new Color(250, 250, 250) : new Color(243, 247, 255));
+                setForeground(Color.BLACK);
+            }
+            setBorder(noFocusBorder);
+            return this;
+        }
+    }
+
+    // Type definitions - restrict choices to valid options
+    // enum = only these values allowed
     public enum PriorityAttribute { HAS_INFANT, HAS_SENIOR, PREGNANT, LACTATING, PWD, DIABETIC, INJURED }
     public enum SupplyCategory { STAPLE, PROTEIN, PRIORITY_NUTRITION, GENERAL_HEALTH, SPECIALIZED_MED }
 
-    // Private variables so that the class family is the only one that can touch/modify them
+    // Family class - one household needing supplies
+    // PRIVATE = only this class touches these values
     public static class Family {
         private String id, headOfFamily;
         private int memberCount;
         public Set<PriorityAttribute> attributes;
 
-        //Map Integer instead of Double for Whole Numbers
+        // Store items this family got (keeps order received)
+        // Map = key(item name) points to value(quantity)
         private Map<String, Integer> itemsReceived = new LinkedHashMap<>();
-        // is inserted to the inventory (Remembers our input in order)
 
 
-        // Constructor
+        // Start a family with its info
         public Family(String id, String name, int size, Set<PriorityAttribute> attrs) {
-            this.id = id; this.headOfFamily = name; this.memberCount = size; this.attributes = attrs; // One liner for clear code
+            this.id = id; this.headOfFamily = name; this.memberCount = size; this.attributes = attrs;
         }
-        // Receive item takes int qty
+        // Record one item given to this family
         public void receiveItem(String item, int qty) { itemsReceived.put(item, itemsReceived.getOrDefault(item, 0) + qty); }
 
-        // we look at/get the private classes values but not change it
+        // Forget old items (when we calculate again)
         public void clearReceived() { itemsReceived.clear(); }
+        // Does family have this special attribute? (baby, old, etc)
         public boolean hasAttribute(PriorityAttribute attr) { return attributes.contains(attr); }
         public int getMemberCount() { return memberCount; }
         public String getId() { return id; }
         public String getHeadOfFamily() { return headOfFamily; }
 
-        // Checks every family received items then turns it into a table
+        // Make a nice readable list of items: "5 pcs of rice + 3 pcs of beans"
         public String getFormattedPackingList() {
             List<String> s = new ArrayList<>();
             for (Map.Entry<String, Integer> e : itemsReceived.entrySet()) {
-                // Simple integer formatting
+                // Format: "5 pcs of rice"
                 s.add(String.format("%d pcs of %s", e.getValue(), e.getKey()));
             }
-            return String.join(" + ", s); // i.e rather than "rice 5pcsmeat 6pcs" it will be "rice 5 pcs + meat 5 pcs"
+            return String.join(" + ", s); // Join with " + " between items
         }
     }
 
-    // all in one initialization and constructor
+    // Supply class - one type of item in warehouse
     public static class Supply {
         String name; SupplyCategory cat; int qty; PriorityAttribute target; double leftover;
+        // Create one supply item
         public Supply(String n, SupplyCategory c, int q, PriorityAttribute t) { name=n; cat=c; qty=q; target=t; }
+        // Store how much was left over
         public void setLeftover(double l) { this.leftover = l; }
     }
 
+    // RationEngine - the brain that calculates fair sharing
     public static class RationEngine {
+        // NOTES: How Distribution Works
+        // ==============================
+        // 1. For each supply item in warehouse:
+        //    - Medical items? Keep them, don't give out
+        //    - Who can get it? (everyone or just one group?)
+        // 2. Calculate: How much per person? (total ÷ number of people)
+        // 3. For each family: Give them their share
+        // 4. Left over? Keep it as reserve
+        //
+        // Example: 100kg rice for 50 people
+        //   Each person gets: 100 ÷ 50 = 2kg
+        //   Family of 4 gets: 2 × 4 = 8kg
         public void distributeWithRounding(List<Family> families, List<Supply> inventory, int totalPop) {
             for (Supply item : inventory) {
+                    // Medical items stay in reserve, don't distribute to families
                 if (item.cat == SupplyCategory.SPECIALIZED_MED) {
                     item.setLeftover(item.qty);
-                    continue;
-                }
-                List<Family> eligible = new ArrayList<>();
+                continue;
+            }
+            // Find all families eligible to receive this item
+            List<Family> eligible = new ArrayList<>();
                 int eligiblePop = 0;
                 if (item.target != null) {
+                    // Special group only? Give just to them
                     for (Family f : families) if (f.hasAttribute(item.target)) eligible.add(f);
                     eligiblePop = eligible.size();
                 } else {
+                    // Nope, give to everyone
                     eligible.addAll(families);
                     eligiblePop = totalPop;
                 }
 
-                // CHANGED: Tracking total distributed as Integer
+                // Count up what was distributed
                 int distributedTotal = 0;
 
                 if (eligiblePop > 0) {
                     double unitShare = (double) item.qty / eligiblePop;
                     for (Family f : eligible) {
+                        // The math: How much does this family get?
                         double rawAllocation;
                         if (item.target != null) rawAllocation = (double) item.qty / eligible.size();
                         else rawAllocation = unitShare * f.getMemberCount();
 
-                        // Strict Floor to Integer
+                        // Convert decimals to whole numbers (7.8 becomes 7)
                         int safeAllocation = (int) Math.floor(rawAllocation);
 
                         if (safeAllocation > 0) {
+                            // Give to family and count it
                             f.receiveItem(item.name, safeAllocation);
                             distributedTotal += safeAllocation;
                         }
                     }
                 }
-                item.setLeftover(item.qty - distributedTotal); // Excess relief goods
+                // Calculate leftover
+                item.setLeftover(item.qty - distributedTotal);
             }
         }
     }
 
+    // ReportGenerator - saves results to files
     public static class ReportGenerator {
         public static void generatePackingList(List<Family> fList, String fname) throws IOException {
             try (PrintWriter pw = new PrintWriter(new FileWriter(fname))) {
@@ -553,7 +880,7 @@ static class bootStrapper extends JFrame {
                 pw.println("----------------------------------------------");
                 for(Supply s : inv) {
                     if (s.cat == SupplyCategory.SPECIALIZED_MED || s.leftover > 0) {
-                        //Format reserve stock as integer
+                        // Show leftovers as whole number
                         String displayQty = String.format("%d", (int)s.leftover);
                         pw.printf("%-20s | %-15s | %-15s%n", s.name, s.cat, displayQty);
                     }
@@ -561,4 +888,5 @@ static class bootStrapper extends JFrame {
             }
         }
     }
+
 }
