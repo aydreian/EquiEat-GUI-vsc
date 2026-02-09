@@ -18,7 +18,7 @@ import javax.swing.table.DefaultTableModel;
  * ---------------------------------------------------------
  * FEATURES:
  * 1. Demographic Analysis: Counts Infants, Seniors, Injured, etc.
- * 2. Audit Log: Logs actions to 'audit_log.txt'.
+ * 2. Audit Log: Logs actions to 'audit_log.html'.
  * 3. Claim Stubs: Generates printable HTML tickets.
  */
 public class SmartRationGUI extends JFrame { // Creates our GUI/Window
@@ -841,4 +841,5 @@ static class bootStrapper extends JFrame {
             return new Insets(15, 10, 15, 10);
         }
     }
+
 }
