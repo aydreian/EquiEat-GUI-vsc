@@ -1,4 +1,6 @@
 import java.awt.*;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
 import java.awt.geom.RoundRectangle2D;
 import java.io.*;
 import java.time.LocalDateTime;
@@ -6,6 +8,7 @@ import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.List;
 import javax.swing.*;
+import javax.swing.Timer;
 import javax.swing.plaf.basic.BasicTabbedPaneUI;
 import javax.swing.table.DefaultTableModel;
 
@@ -53,13 +56,18 @@ public class SmartRationGUI extends JFrame { // Creates our GUI/Window
     // Bootstrap/Loading Screen Class 
     // This makes an illusion that something is processing while the program is loading the main GUI
 static class bootStrapper extends JFrame {
+
+    static ImageIcon[] frames; // Array of frames for animation
+    static JLabel animationLabel; // Label to display the animation
+    static int currentFrame = 0; // Current frame index
+
     public bootStrapper() {
         AuditLogger tempLogger = new AuditLogger();
         tempLogger.log("SYSTEM_STARTUP", "Application launched.");
 
         
         setTitle("BootStrapper - Smart Rationing System");
-        setSize(400, 200);
+        setSize(1000, 500);
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setLocationRelativeTo(null);
         setUndecorated(true); // Makes no border or titlebar
@@ -90,14 +98,42 @@ static class bootStrapper extends JFrame {
         background.add(label, BorderLayout.CENTER);
         background.add(bottomPanel, BorderLayout.SOUTH);
 
+        // uses array to store the file of each frames
+        frames = new ImageIcon[5];
+        frames[0] = new ImageIcon("resources\\frame1.png");
+        frames[1] = new ImageIcon("resources\\frame2.png");
+        frames[2] = new ImageIcon("resources\\frame3.png");
+        frames[3] = new ImageIcon("resources\\frame4.png");
+        frames[4] = new ImageIcon("resources\\frame5.png");
+        
+        // animation starts at frame 1
+        animationLabel = new JLabel(frames[0]);
+        add(animationLabel, BorderLayout.CENTER);
+
+        animationLabel.setSize(200, 200);
+
+        // Uses timer t to create the looping animation
+        Timer timer = new Timer(200, new ActionListener(){
+            @Override 
+            public void actionPerformed(ActionEvent e){
+                currentFrame++; // increments array index 
+                
+                if(currentFrame >= frames.length){ // checks if the current frame is greater than to the frames length
+                    currentFrame =0; // resets the frame to 0
+                }
+
+                animationLabel.setIcon(frames[currentFrame]);
+            }
+        });
+
+        timer.start();
+        
+
         // Uses the array to allow modification inside the lambda expression of the timer
-        int[] progress = {100};
-        javax.swing.Timer progressTimer = new javax.swing.Timer(50, e -> {
+        int[] progress = {0};
+            Timer progressTimer = new Timer(50, e -> {
             progress[0]++;
             progressBar.setValue(progress[0]);
-            
-
-            
 
             // Updates teh status when percentage reaches certain percentage
             if(progress[0] == 10) {
@@ -253,9 +289,9 @@ static class bootStrapper extends JFrame {
         operationsPanel.add(runBtn, BorderLayout.SOUTH);
 
         // Load icons for tabs (create small icons, e.g., 20x20 pixels)
-        ImageIcon controlIcon = createScaledIcon("resources\\icon.png", 20, 20);
-        ImageIcon resultsIcon = createScaledIcon("resources\\icon.png", 20, 20);
-        ImageIcon reserveIcon = createScaledIcon("resources\\icon.png", 20, 20);
+        ImageIcon controlIcon = createScaledIcon("resources\\control.png", 50,50);
+        ImageIcon resultsIcon = createScaledIcon("resources\\distribution.png", 50, 50);
+        ImageIcon reserveIcon = createScaledIcon("resources\\reserve.png", 50, 50);
 
         tabbedPane.addTab("Control Center", controlIcon, operationsPanel);
         tabbedPane.setBackgroundAt(0, new Color(26, 62, 66)); // Blue background
@@ -575,7 +611,7 @@ static class bootStrapper extends JFrame {
                 String timeStamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
                 String newEntry = String.format("<tr><td class='timestamp'>%s</td><td class='action %s'>%s</td><td class='details'>%s</td></tr>\n<!-- LOG_ENTRIES -->", timeStamp, action, action, details);
 
-                String updatedContent = content.toString().replace("<!-- LOG_ENTRIES -->", newEntry + "<!-- LOG_ENTRIES -->");
+                String updatedContent = content.toString().replaceFirst("<!-- LOG_ENTRIES -->", newEntry);
 
                 try (PrintWriter pw = new PrintWriter(new FileWriter(LOG_FILE))) {
                     pw.print(updatedContent);
@@ -726,7 +762,7 @@ static class bootStrapper extends JFrame {
                 pw.println(".priority {color: #d32f2f; font-weight: bold; font-size: 12px;}");
                 pw.println(".allocation {color: #555; font-size: 14px;}");
                 pw.println("</style></head><body>");
-                pw.println("<nav><h1>Final Packing List</h1></nav>");
+                pw.println("<nav><h1>EquiEat - Final Packing List</h1></nav>");
                 pw.println("<table><tr><th>Family ID</th><th>Head of Family</th><th>Size</th><th>Priorities</th><th>Ration Allocation</th></tr>");
 
                 for (Family f : fList) {
