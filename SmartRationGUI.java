@@ -149,7 +149,9 @@ static class bootStrapper extends JFrame {
                 loadingStatus.setText("Loading assets...");
                 ImageIcon bg = new ImageIcon("resources\\bootStrapBG.png"); // Preloads the image to ensure it's cached
                 setIconImage(new ImageIcon("resources\\icon.png").getImage());
-
+                setIconImage(new ImageIcon("resources\\control.png").getImage());
+                setIconImage(new ImageIcon("resources\\distribution.png").getImage());
+                setIconImage(new ImageIcon("resources\\reserve.png").getImage());
                 if (bg.getIconWidth() == -1){
                     JOptionPane.showMessageDialog(this, "Error 2: Missing file in resources. Please reinstall!");
                     System.exit(1);
@@ -173,7 +175,7 @@ static class bootStrapper extends JFrame {
                         testFile.delete();
                     }
                 } catch (IOException ioException) {
-                    JOptionPane.showMessageDialog(this, "Error 4: Insufficient write permissions in application directory.");
+                    JOptionPane.showMessageDialog(this, "Error 3: Insufficient write permissions in application directory.");
                     System.exit(1);
                 } 
                     
@@ -181,13 +183,14 @@ static class bootStrapper extends JFrame {
 
             else if(progress[0] == 90){
                 loadingStatus.setText("Finalizing setup...");
+
             }
             
             // Checks when the progress has reached 100%, disposes the loading screen, and opens the main GUI -v-
             if (progress[0] >= 100) {
                 ((javax.swing.Timer)e.getSource()).stop();
+                new SmartRationGUI().setVisible(true);
                 dispose();
-                new SmartRationGUI().setVisible(true); // now calls the GUI 
             }
         });
 
