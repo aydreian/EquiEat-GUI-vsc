@@ -122,7 +122,7 @@ static class bootStrapper extends JFrame {
                     currentFrame =0; // resets the frame to 0
                 }
 
-                animationLabel.setIcon(frames[currentFrame]);
+                animationLabel.setIcon(frames[currentFrame]); // shows the label animation in the current [0] index
             }
         });
 
@@ -138,8 +138,8 @@ static class bootStrapper extends JFrame {
             // Updates teh status when percentage reaches certain percentage
             if(progress[0] == 10) {
                 loadingStatus.setText("Checking directories...");
-                File resourcesDir = new File("resources");
-                if (!resourcesDir.exists()){
+                File resourcesDir = new File("resources"); 
+                if (!resourcesDir.exists()){ // Checks if resource folder is existing
                     JOptionPane.showMessageDialog(this, "Error 1: Missing 'resources' folder. Please reinstall!");
                     System.exit(1);
                 }  
@@ -153,7 +153,7 @@ static class bootStrapper extends JFrame {
                 setIconImage(new ImageIcon("resources\\distribution.png").getImage());
                 setIconImage(new ImageIcon("resources\\reserve.png").getImage());
                 if (bg.getIconWidth() == -1){
-                    JOptionPane.showMessageDialog(this, "Error 2: Missing file in resources. Please reinstall!");
+                    JOptionPane.showMessageDialog(this, "Error 2: Missing file in resources. Please reinstall!"); //if one of the file is missing, error 2 will show up
                     System.exit(1);
                 }
             }
@@ -165,11 +165,11 @@ static class bootStrapper extends JFrame {
 
             else if (progress[0] == 70){
                 loadingStatus.setText("Verifying permissions...");
-                File testFile = new File("resources\\test.tmp");
+                File testFile = new File("resources\\test.tmp"); // create temp file to make sure that the system has permission
                 try {
                     boolean created = testFile.createNewFile();
                     if(created){
-                        testFile.delete();
+                        testFile.delete(); // deletes the file immediately
                     } else 
                     {
                         testFile.delete();
@@ -183,7 +183,6 @@ static class bootStrapper extends JFrame {
 
             else if(progress[0] == 90){
                 loadingStatus.setText("Finalizing setup...");
-
             }
             
             // Checks when the progress has reached 100%, disposes the loading screen, and opens the main GUI -v-
@@ -574,7 +573,7 @@ static class bootStrapper extends JFrame {
 
             try{
                 if(!fileExists){
-                    try (PrintWriter pw = new PrintWriter(new FileWriter(LOG_FILE))){
+                    try (PrintWriter pw = new PrintWriter(new FileWriter(LOG_FILE))){ // creates HTML file
                         pw.println("<!DOCTYPE html>");
                         pw.println("<html><head><title>EquiEat - Audit Log</title>");
                         pw.println("<meta charset='UTF-8'>");
@@ -612,7 +611,7 @@ static class bootStrapper extends JFrame {
                 }
 
                 String timeStamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
-                String newEntry = String.format("<tr><td class='timestamp'>%s</td><td class='action %s'>%s</td><td class='details'>%s</td></tr>\n<!-- LOG_ENTRIES -->", timeStamp, action, action, details);
+                String newEntry = String.format("<tr><td class='timestamp'>%s</td><td class='action %s'>%s</td><td class='details'>%s</td></tr>\n<!-- LOG_ENTRIES -->", timeStamp, action, action, details); // inputs new HTML table when new actions have performed 
 
                 String updatedContent = content.toString().replaceFirst("<!-- LOG_ENTRIES -->", newEntry);
 
@@ -768,7 +767,7 @@ static class bootStrapper extends JFrame {
                 pw.println("<nav><h1>EquiEat - Final Packing List</h1></nav>");
                 pw.println("<table><tr><th>Family ID</th><th>Head of Family</th><th>Size</th><th>Priorities</th><th>Ration Allocation</th></tr>");
 
-                for (Family f : fList) {
+                for (Family f : fList) { // Loop condition in creating a table for a family
                     pw.printf("<tr><td>%s</td><td>%s</td><td>%d</td><td class='priority'>%s</td><td class='allocation'>%s</td></tr>%n",
                         escapeHtml(f.getId()), 
                         escapeHtml(f.getHeadOfFamily()), 
@@ -776,13 +775,13 @@ static class bootStrapper extends JFrame {
                         escapeHtml(f.attributes.toString().replace(",", " ")),
                         escapeHtml(f.getFormattedPackingList()));
                 }
-                pw.println("</table>");
+                pw.println("</table>"); 
                 pw.println("</body></html>");
 
             }
         }
 
-        private static String escapeHtml(String text){
+        private static String escapeHtml(String text){ // convert special Characters into HTML entities
             return text.replace("&", "&amp;")
                        .replace("<", "&lt;")
                        .replace(">", "&gt;")
@@ -846,3 +845,4 @@ static class bootStrapper extends JFrame {
     }
 
 }
+
